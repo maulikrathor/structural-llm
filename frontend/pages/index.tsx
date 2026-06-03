@@ -16,18 +16,10 @@ interface Segment {
   end2: string;
 }
 
-interface ImageBounds {
-  left_pct: number;
-  right_pct: number;
-  top_pct: number;
-  bottom_pct: number;
-}
-
 interface Analysis {
   section_type: string;
   unit: string;
   dimensions_read: Record<string, number>;
-  image_bounds?: ImageBounds;
   corners: Corner[];
   line_segments: Segment[];
   warnings: string[];
@@ -45,13 +37,11 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   async function handleUpload(file: File) {
     setLoading(true);
     setError(null);
     setResult(null);
-    setUploadedFile(file);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -153,13 +143,8 @@ export default function Home() {
             </div>
           </div>
 
-          {uploadedFile && (
-            <AnnotatedCanvas
-              imageFile={uploadedFile}
-              corners={result.analysis.corners}
-              imageBounds={result.analysis.image_bounds}
-            />
-          )}
+          {/* Clean structural diagram drawn from coordinates — no superimposition */}
+          <AnnotatedCanvas corners={result.analysis.corners} />
 
           <ResultTables
             corners={result.analysis.corners}
