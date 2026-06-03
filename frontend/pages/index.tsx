@@ -46,7 +46,8 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/analyze", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/analyze`, {
         method: "POST",
         body: formData,
       });
