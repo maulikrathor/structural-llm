@@ -19,9 +19,10 @@ load_dotenv()
 
 app = FastAPI(title="Structural Section Analyzer")
 
+origins = os.getenv("CORS_ORIGINS","*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this in production
+    allow_origins=origins,  # tighten this in production
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
