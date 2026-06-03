@@ -16,10 +16,18 @@ interface Segment {
   end2: string;
 }
 
+interface ImageBounds {
+  left_pct: number;
+  right_pct: number;
+  top_pct: number;
+  bottom_pct: number;
+}
+
 interface Analysis {
   section_type: string;
   unit: string;
   dimensions_read: Record<string, number>;
+  image_bounds?: ImageBounds;
   corners: Corner[];
   line_segments: Segment[];
   warnings: string[];
@@ -149,6 +157,7 @@ export default function Home() {
             <AnnotatedCanvas
               imageFile={uploadedFile}
               corners={result.analysis.corners}
+              imageBounds={result.analysis.image_bounds}
             />
           )}
 

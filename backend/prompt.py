@@ -49,6 +49,18 @@ Number them 1, 2, 3... in the same clockwise order as the corners.
 Each segment connects two consecutive corners (A→B is segment 1, B→C is segment 2, etc).
 The last segment closes the shape back to A.
 
+### Step 6: Estimate structure bounds in image
+Look at the image and estimate what fraction of the image width/height
+the structural outline occupies, ignoring all dimension lines, arrows, and text.
+Express as fractions between 0.0 and 1.0:
+- left_pct: how far from the left edge the structure outline starts
+- right_pct: how far from the left edge the structure outline ends
+- top_pct: how far from the top edge the structure outline starts
+- bottom_pct: how far from the top edge the structure outline ends
+
+Example: if the structure fills the middle 60% of the image with equal margins,
+left_pct=0.20, right_pct=0.80, top_pct=0.20, bottom_pct=0.80.
+
 ## OUTPUT FORMAT
 Return ONLY valid JSON. No explanation, no markdown, no code fences.
 
@@ -61,6 +73,12 @@ Return ONLY valid JSON. No explanation, no markdown, no code fences.
     "top_flange_thickness": 2,
     "bottom_flange_thickness": 2,
     "web_thickness": 2
+  },
+  "image_bounds": {
+    "left_pct": 0.15,
+    "right_pct": 0.80,
+    "top_pct": 0.10,
+    "bottom_pct": 0.85
   },
   "corners": [
     {"label": "A", "x": 0, "y": 28},
