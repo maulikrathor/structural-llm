@@ -2,6 +2,7 @@
 import { useState } from "react";
 import ImageUpload from "../components/ImageUpload";
 import ResultTables from "../components/ResultTables";
+import AnnotatedCanvas from "../components/AnnotatedCanvas";
 
 interface Corner {
   label: string;
@@ -36,26 +37,39 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   async function handleUpload(file: File) {
     setLoading(true);
     setError(null);
     setResult(null);
+    setUploadedFile(file);
 
     const formData = new FormData();
     formData.append("file", file);
 
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${apiUrl}/api/analyze`, {
         method: "POST",
         body: formData,
       });
+
+      const text = await res.text();
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Analysis failed");
+        let detail = text;
+        try { detail = JSON.parse(text).detail; } catch {}
+        throw new Error(detail || "Analysis failed");
       }
-      const data = await res.json();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Backend returned invalid response: ${text.slice(0, 200)}`);
+      }
+
       setResult(data);
     } catch (e: any) {
       setError(e.message);
@@ -77,6 +91,17 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadJson() {
+    if (!result) return;
+    const blob = new Blob([JSON.stringify(result.analysis, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "structural_analysis.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="container">
       <header>
@@ -92,7 +117,7 @@ export default function Home() {
         <div className="results">
           <div className="result-header">
             <h2>
-              {result.analysis.section_type} &nbsp;
+              {result.analysis.section_type}&nbsp;
               <span className="badge">{result.analysis.unit}</span>
             </h2>
 
@@ -105,20 +130,27 @@ export default function Home() {
             )}
 
             <div className="downloads">
-              <button
-                onClick={() => downloadFile(result.exports.excel_b64, "structural_analysis.xlsx",
-                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
-              >
+              <button onClick={() =>
+                downloadFile(result.exports.excel_b64, "structural_analysis.xlsx",
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>
                 ↓ Download Excel
               </button>
-              <button
-                onClick={() => downloadFile(result.exports.dxf_b64, "structural_analysis.dxf",
-                  "application/dxf")}
-              >
+              <button onClick={() =>
+                downloadFile(result.exports.dxf_b64, "structural_analysis.dxf", "application/dxf")}>
                 ↓ Download DXF
+              </button>
+              <button onClick={downloadJson}>
+                ↓ Download JSON
               </button>
             </div>
           </div>
+
+          {uploadedFile && (
+            <AnnotatedCanvas
+              imageFile={uploadedFile}
+              corners={result.analysis.corners}
+            />
+          )}
 
           <ResultTables
             corners={result.analysis.corners}

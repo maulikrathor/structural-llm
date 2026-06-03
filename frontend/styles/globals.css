@@ -215,3 +215,17 @@ td:first-child {
   font-weight: 600;
   color: var(--accent);
 }
+
+/* Annotated drawing */
+.annotated-wrapper {
+  margin: 24px 0;
+}
+
+.annotated-wrapper h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
