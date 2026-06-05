@@ -84,7 +84,8 @@ async def analyze_structural_drawing(
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
-            f"{GEMINI_API_URL}?key={api_key}",
+            GEMINI_API_URL,
+            headers={"x-goog-api-key": api_key},
             json=payload,
         )
         response.raise_for_status()
