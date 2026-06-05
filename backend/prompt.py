@@ -12,54 +12,97 @@ Your task is to analyze a 2D structural section drawing and return precise corne
 
 ## SUPPORTED SECTION TYPES
 I-beam (I-section), T-beam (T-section), C-channel (C-section), L-section (angle),
-Z-section, Hollow Rectangular Section (RHS), Hollow Square Section (SHS), Structural Plate, Flat Bar.
+Z-section, Hollow Rectangular Section (RHS/HSS), Hollow Square Section (SHS),
+U-section (open bottom), Structural Plate, Flat Bar.
 
-## STEP-BY-STEP INSTRUCTIONS
+## CRITICAL DISTINCTION — STRUCTURAL OUTLINE vs ANNOTATIONS
+The image contains TWO types of lines:
+  STRUCTURAL lines: form the closed (or open) boundary of the cross-section. These are
+    the thick solid lines that define the actual shape. They always connect to each other.
+  ANNOTATION lines: dimension arrows, extension lines, leader lines, and text labels.
+    These lines point TO the structure but are NOT part of it. They often cross or touch
+    the structural boundary — this does NOT mean they are structural edges.
 
-### Step 1: Identify the section type
-Look at the overall shape of the structural outline only. Ignore all dimension lines, arrows, and text labels.
+Rule: if a line has an arrowhead, terminates in open space, or is parallel and offset
+from a structural edge with a number nearby, it is an annotation — IGNORE IT for geometry.
+Only use annotation numbers to READ dimension values, not to determine shape geometry.
 
-### Step 2: Read all dimensions
-Extract every numeric value with its unit (cm, mm, m, inches — note the unit used).
-Identify what each value represents:
-- Overall height / total depth
-- Overall width / flange width
-- Flange thickness (top and/or bottom — if only one is given, assume both flanges are equal)
-- Web thickness
-- If height is given as web-height-only (the middle part), note this explicitly.
+## STEP 1 — IDENTIFY SECTION TYPE
+Look at the structural outline ONLY. Mentally erase all arrows, extension lines, and
+dimension numbers. What closed (or open) polygon remains?
 
-If a dimension is given only once but applies symmetrically (e.g. flange thickness shown on top only), apply it to both.
+Classify as one of the supported types. Key identifiers:
+- I-beam: H-shape, two wide flanges connected by narrow web, symmetric top and bottom
+- T-beam: T-shape, one wide flange on top, narrow web below, open at bottom sides
+- C-channel: C-shape, two flanges on same side, open on one vertical side
+- U-section: same as C but open at bottom, like a rectangular frame missing the floor
+- L-section: two legs at right angle, like a corner bracket
+- Z-section: two offset flanges connected by diagonal or stepped web
+- RHS/HSS: fully closed hollow rectangle, has inner and outer boundary
+- Plate/Flat Bar: simple rectangle
 
-### Step 3: Set the coordinate origin
-Place the origin (0, 0) at the BOTTOM-LEFT corner of the structural outline.
+## STEP 2 — READ ALL DIMENSIONS
+Extract every numeric value visible in the image with its unit if shown.
+For each number, determine what structural feature it measures:
+  - A number with a vertical arrow spanning the full height → overall height
+  - A number with a horizontal arrow spanning the full width → overall width
+  - A number with a short vertical arrow near a flange edge → flange thickness
+  - A number near the web with a short horizontal arrow → web thickness
+  - A number spanning only the inner void → internal height or width
+
+If a dimension is shown on only one side but the section is symmetric for that feature,
+apply the same value to the opposite side.
+
+If a dimension describes only the web height (middle region, not including flanges),
+compute: overall_height = top_flange_thickness + web_height + bottom_flange_thickness.
+
+## STEP 3 — ESTABLISH COORDINATE SYSTEM
+Origin rule: place (0, 0) at the point that is simultaneously:
+  - The LEFTMOST x-coordinate across the ENTIRE structural outline
+  - AND at the BOTTOM of the structural outline at that x-position
+
+In practice: find the leftmost vertical edge of the shape. The bottom of that edge is (0, 0).
 X increases to the right. Y increases upward.
+ALL coordinates must be zero or positive. No negative values.
 
-### Step 4: Compute all corner coordinates
-Using only the extracted dimension values, calculate every corner of the structural cross-section.
+This means:
+- For symmetric sections (I, T, RHS): (0,0) is the bottom-left outer corner.
+- For L-sections opening right: (0,0) is the bottom of the left vertical leg.
+- For C-channels opening right: (0,0) is the bottom-left outer corner.
+- For asymmetric sections: find the true leftmost point of the outline — that x becomes 0.
 
-Label corners alphabetically starting from A at the TOP-LEFT, going CLOCKWISE:
-- For an I-beam: A=top-left, B=top-right, then clockwise inward and down to L=bottom-right-inner-bottom.
-- For other sections: start top-left, go clockwise, label every corner where the outline changes direction.
+## STEP 4 — COMPUTE CORNER COORDINATES
+Using ONLY the dimension values extracted in Step 2, compute every corner of the outline.
+Do NOT use pixel positions or visual estimation for coordinate values.
+Use pure dimension arithmetic.
 
-Be precise. Do not round unless the input dimensions are whole numbers.
+Label corners starting from A at the TOP-LEFT corner of the overall bounding box,
+proceeding CLOCKWISE around the outline. Every point where the outline changes
+direction is a corner and gets a label.
 
-### Step 5: List all line segments
-Each straight edge of the structural outline is one line segment.
-Number them 1, 2, 3... in the same clockwise order as the corners.
-Each segment connects two consecutive corners (A→B is segment 1, B→C is segment 2, etc).
-The last segment closes the shape back to A.
+Corner count by section type:
+- I-beam: 12 corners (A through L)
+- T-beam: 8 corners (A through H)
+- C-channel: 8 corners (A through H)
+- U-section: 8 corners (A through H)
+- L-section: 6 corners (A through F)
+- Z-section: 8 corners (A through H)
+- RHS/HSS outer boundary: 4 corners; inner boundary: 4 corners — label outer A-D,
+  inner E-H, note these as two separate closed loops
+- Plate/Flat Bar: 4 corners (A through D)
 
-### Step 6: Estimate structure bounds in image
-Look at the image and estimate what fraction of the image width/height
-the structural outline occupies, ignoring all dimension lines, arrows, and text.
-Express as fractions between 0.0 and 1.0:
-- left_pct: how far from the left edge the structure outline starts
-- right_pct: how far from the left edge the structure outline ends
-- top_pct: how far from the top edge the structure outline starts
-- bottom_pct: how far from the top edge the structure outline ends
+## STEP 5 — LIST LINE SEGMENTS
+Each straight edge of the structural outline is one segment.
+Number them 1, 2, 3... following the same clockwise order as the corners.
+Segment N connects corner N to corner N+1. The final segment closes back to A.
+For RHS/HSS: list outer loop segments first, then inner loop segments.
 
-Example: if the structure fills the middle 60% of the image with equal margins,
-left_pct=0.20, right_pct=0.80, top_pct=0.20, bottom_pct=0.80.
+## STEP 6 — ESTIMATE IMAGE BOUNDS
+Estimate what fraction of the image the structural outline (not annotations) occupies:
+- left_pct: leftmost x of structure / image width
+- right_pct: rightmost x of structure / image width
+- top_pct: topmost y of structure / image height (0=top of image)
+- bottom_pct: bottommost y of structure / image height
 
 ## OUTPUT FORMAT
 Return ONLY valid JSON. No explanation, no markdown, no code fences.
@@ -111,22 +154,30 @@ Return ONLY valid JSON. No explanation, no markdown, no code fences.
   "warnings": []
 }
 
-## VALIDATION RULES — check these before returning
-1. top_flange_thickness + web_height + bottom_flange_thickness = overall_height
-2. First corner A is top-left: x=0, y=overall_height
-3. Shape must be closed: last segment ends at A
-4. Corner count matches section type:
-   - I-beam: exactly 12 corners
-   - T-beam: exactly 8 corners
-   - C-channel: exactly 8 corners
-   - L-section: exactly 6 corners
-   - Hollow rectangular: exactly 8 corners (outer 4 + inner 4)
-5. If any validation fails, add a message to "warnings" array but still return best-effort coordinates.
+## VALIDATION — CHECK BEFORE RETURNING
+1. Dimensional consistency: flanges + web = overall height. If mismatch, add warning.
+2. Origin check: the corner with the smallest x-value must have x=0. The corner
+   at (0,0) must exist. No coordinate may be negative.
+3. Closure check: for solid sections, the last segment must end at corner A.
+   For open sections (T, C, U, L, Z), note open edges in warnings — do not force closure.
+4. Corner count: must match section type table above.
+5. Clockwise order: from A going clockwise, x should generally increase first (moving right
+   along the top edge). If A→B moves left, the labeling is counter-clockwise — fix it.
+6. If any check fails, add a descriptive message to "warnings" but still return
+   best-effort coordinates. Never return empty corners.
 
-## COMMON ANNOTATION PATTERNS — handle all of these
-- Flange thickness shown once (top only) → apply same value to bottom flange
-- Height given as web region only (middle part, excluding flanges) → overall_height = top_flange + web_height + bottom_flange
-- Dimensions in mixed notation: "h=28", "tw=2", "bf=31" → map to correct fields
-- Dimension lines that cross or overlap the structure → ignore for geometry, read the number only
-- Arrow lines extending beyond the structure → ignore for geometry
+## HANDLING AMBIGUOUS OR UNUSUAL INPUTS
+- Dark background images (CAD screenshots): the structural outline is the lighter colored
+  shape, annotations are colored lines (often magenta/pink/cyan). Read the colored numbers
+  as dimensions, treat the lighter filled area as the structural cross-section.
+- Dimension lines that overlap or cross the structure: these are annotations, not edges.
+  A line is structural only if it forms part of the closed (or open) profile boundary.
+- Only one flange thickness labeled: if the section is symmetric (I-beam), apply same
+  thickness to both flanges.
+- Web height vs total height: if the labeled dimension clearly spans only the middle
+  region (between flanges), it is web height, not total height.
+- Hand-drawn images: corners may not be perfectly square. Interpret intent from context
+  and dimension values, not from pixel accuracy.
+- If section type cannot be determined with confidence, classify as "unknown" and list
+  all detected corners without applying section-specific formulas.
 """.strip()
